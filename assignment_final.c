@@ -10,11 +10,10 @@
 #define packet_length 16 // 16 bytes = 128 bits
 
 //zero padding, 2 padding bytes, 1 byte for length
-//static const uint8_t crosschecker[] = {'H', 'e', 'l', 'l', 'o', ',', ' ', 'W', 'o', 'r', 'l', 'd', '!', 0x00, 0x00, 0x02};
+static uint8_t crosschecker[packet_length] = {'H', 'e', 'l', 'l', 'o', ',', ' ', 'W', 'o', 'r', 'l', 'd', '!', 0x00, 0x00, 0x02};
 
 void flip_bit(uint8_t *data, int position); // Function to flip a bit in a byte array, used for bit error rate testing
 uint8_t compute_parity(const uint8_t *data, size_t len);
-
 unsigned int count_bit_errors(const uint8_t *received, size_t length);
 //void encrypt_and_send(const uint8_t *plaintext);
 
@@ -24,6 +23,12 @@ static uint8_t encryption_key[] = {
   0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
   0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f
 };
+
+//Things to check:
+//1. processing time
+//2. power consumption
+//3. bit error rate
+//4. memory footprint
 
 PROCESS(assignment_final, "AES Encryption and Send Process");
 AUTOSTART_PROCESSES(&assignment_final);
@@ -35,14 +40,13 @@ PROCESS_THREAD(assignment_final, ev, data)
     static unsigned int total_bit_errors = 0;
     static unsigned int total_bits_received = 0;
 
-    
-
     PROCESS_BEGIN();
 
     cc2420_init();
     cc2420_set_channel(CHANNEL);
-    AES_128.set_key(encryption_key); // Initialize AES
-    
+    AES_128.set_key(encryption_key); //Initialize AES
+    AES_128.encrypt(crosschecker); //Precompute the encrypted data
+
     while(1) {
         // Set a timer to pace the sampling
         etimer_set(&et, TRANSFER_INTERVAL);
@@ -55,6 +59,7 @@ PROCESS_THREAD(assignment_final, ev, data)
 
         // Encrypt plaintext
         AES_128.encrypt(plaintext); // Ensure that encrypt function takes two arguments
+        
 
         // End time measurement
         end_time = RTIMER_NOW();
@@ -81,19 +86,13 @@ PROCESS_THREAD(assignment_final, ev, data)
         uint8_t parity_after = compute_parity(plaintext, sizeof(plaintext));
         printf("Parity bit after bit flip: %d\n", parity_after);
 
-
-
-        /*
-        no work, why?
+        //no work, why?
         unsigned int new_bit_errors = count_bit_errors(plaintext, sizeof(plaintext));
-        
         printf("Bit errors: %d\n", new_bit_errors);
-
         total_bit_errors += new_bit_errors;
         total_bits_received += packet_length * 8;
-
         int ber = total_bit_errors / total_bits_received;
-        printf("Updated Bit Error Rate (BER): %d \n", ber);*/
+        printf("Updated Bit Error Rate (BER): %d \n", ber);
     }
 
   PROCESS_END();
@@ -124,7 +123,7 @@ unsigned int count_bit_errors(const uint8_t *received, size_t length) {
     for (size_t i = 0; i < length; i++) {
         uint8_t xor = crosschecker[i] ^ received[i];
 
-        printf("Byte %zu, Expected: 0x%02x, Received: 0x%02x, XOR: 0x%02x\n", i, crosschecker[i], received[i], xor);
+        printf("Byte %d, Expected: 0x%02x, Received: 0x%02x, XOR: 0x%02x\n", i, crosschecker[i], received[i], xor);
 
         while (xor > 0) {
             bit_errors += xor & 1;
