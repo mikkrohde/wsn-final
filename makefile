@@ -1,4 +1,4 @@
-CONTIKI_PROJECT = assignment_final
+CONTIKI_PROJECT = encryption_and_transmission
 all: $(CONTIKI_PROJECT)
 
 CONTIKI = ../..
