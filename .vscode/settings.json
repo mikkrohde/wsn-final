@@ -3,6 +3,7 @@
         "stdio.h": "c",
         "string.h": "c",
         "cc2420.h": "c",
-        "serial-line.h": "c"
+        "serial-line.h": "c",
+        "contiki.h": "c"
     }
 }
